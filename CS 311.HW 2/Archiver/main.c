@@ -2,8 +2,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "file_perms.h"
-#include "tlpi_hdr.h"
+#include <stdio.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 static void
 displayStatInfo(const struct stat *sb)
