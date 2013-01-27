@@ -1,0 +1,1 @@
+tar -cjf filename.tar.bz2 filea fileb

@@ -1,0 +1,11 @@
+# depslib dependency file v1.0
+1359320242 source:c:\users\drake\skydrive\documents\osu\winter 2013\cs 311 operating systems\hw 2\archiver\main.c
+	<stdio.h>
+	<sys/types.h>
+	<fcntl.h>
+	<errno.h>
+	<stdlib.h>
+	<unistd.h>
+	<stdio.h>
+	<stdlib.h>
+
