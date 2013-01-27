@@ -1,70 +1,89 @@
-#include <stdio.h>
+#define _BSD_SOURCE     /* Get major() and minor() from <sys/types.h> */
 #include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <sys/stat.h>
+#include <time.h>
+#include "file_perms.h"
+#include "tlpi_hdr.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#define BLOCKSIZE 1
-
-int main(int argc, char **argv)
+static void
+displayStatInfo(const struct stat *sb)
 {
-    char *input = argv[1];
-	char *output = argv[2];
+    printf("File type:                ");
+    switch (sb->st_mode & S_IFMT)
+    {
+    case S_IFREG:
+        printf("regular file\n");
+        break;
+    case S_IFDIR:
+        printf("directory\n");
+        break;
+    case S_IFCHR:
+        printf("character device\n");
+        break;
+    case S_IFBLK:
+        printf("block device\n");
+        break;
+    case S_IFLNK:
+        printf("symbolic (soft) link\n");
+        break;
+    case S_IFIFO:
+        printf("FIFO or pipe\n");
+        break;
+    case S_IFSOCK:
+        printf("socket\n");
+        break;
+    default:
+        printf("unknown file type?\n");
+        break;
+    }
+    printf("Device containing i-node: major=%ld   minor=%ld\n",
+           (long) major(sb->st_dev), (long) minor(sb->st_dev));
 
-	int in_fd;
-	int out_fd;
+    printf("I-node number:            %ld\n", (long) sb->st_ino);
+    printf("Mode:                     %lo (%s)\n",
+           (unsigned long) sb->st_mode, filePermStr(sb->st_mode, 0));
 
-	char buf[BLOCKSIZE];
+    if (sb->st_mode & (S_ISUID | S_ISGID | S_ISVTX))
+        printf("    special bits set:     %s%s%s\n",
+               (sb->st_mode & S_ISUID) ? "set-UID " : "",
+               (sb->st_mode & S_ISGID) ? "set-GID " : "",
+               (sb->st_mode & S_ISVTX) ? "sticky " : "");
+    printf("Number of (hard) links:   %ld\n", (long) sb->st_nlink);
 
-	int num_read;
-	int num_written;
-
-	char *theFilename = input;
-	char *fileModTimestamp;
-	char *fileOwnerID;
-	char *fileGroupID;
-	char *fileMode;
-	int  *fileSize;
-	char *fileMagic;
-
-
-	off_t file_size;
-	off_t copied;
-
-	in_fd = open(input, O_RDONLY);
-	if(in_fd == -1){
-		perror("Can't open input file");
-		exit(-1);
-	}
-
-	out_fd = open(output, O_WRONLY | O_CREAT, 0777);
-	if(out_fd == -1){
-		perror("Can't open output file");
-		exit(-1);
-	}
-
-	file_size = lseek(in_fd, 0, SEEK_END);
-	copied = 0;
-	lseek(in_fd, -1, SEEK_END);
-
-	while(copied < file_size){
-		num_read = read(in_fd, buf, BLOCKSIZE);
-		num_written = write(out_fd, buf, BLOCKSIZE);
-
-		if (num_read != num_written){
-			perror("Error writing file");
-			unlink(output);
-			exit(-1);
-		}
-
-		copied += num_written;
-
-		lseek(in_fd, -2, SEEK_CUR);
-	}
-
-	return 0;
+    printf("Ownership:                UID=%ld   GID=%ld\n",
+           (long) sb->st_uid, (long) sb->st_gid);
+    if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode))
+        printf("Device number (st_rdev):  major=%ld; minor=%ld\n",
+               (long) major(sb->st_rdev), (long) minor(sb->st_rdev));
+    printf("File size:                %lld bytes\n", (long long) sb->st_size);
+    printf("Optimal I/O block size:   %ld bytes\n", (long) sb->st_blksize);
+    printf("512B blocks allocated:    %lld\n", (long long) sb->st_blocks);
+    printf("Last file access:         %s", ctime(&sb->st_atime));
+    printf("Last file modification:   %s", ctime(&sb->st_mtime));
+    printf("Last status change:       %s", ctime(&sb->st_ctime));
+}
+int
+main(int argc, char *argv[])
+{
+    struct stat sb;
+    Boolean statLink;           /* True if "-l" specified (i.e., use lstat) */
+    int fname;                  /* Location of filename argument in argv[] */
+    statLink = (argc > 1) && strcmp(argv[1], "-l") == 0;
+    /* Simple parsing for "-l" */
+    fname = statLink ? 2 : 1;
+    if (fname >= argc || (argc > 1 && strcmp(argv[1], "--help") == 0))
+        usageErr("%s [-l] file\n"
+                 "        -l = use lstat() instead of stat()\n", argv[0]);
+    if (statLink)
+    {
+        if (lstat(argv[fname], &sb) == -1)
+            errExit("lstat");
+    }
+    else
+    {
+        if (stat(argv[fname], &sb) == -1)
+            errExit("stat");
+    }
+    displayStatInfo(&sb);
+    exit(EXIT_SUCCESS);
 }
