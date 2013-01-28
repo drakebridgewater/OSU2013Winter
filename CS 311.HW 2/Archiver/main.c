@@ -65,7 +65,6 @@ int main(int argc, char **argv)
 
 		lseek(in_fd, -2, SEEK_CUR);
 	}
-	printf("File size:                %lld bytes\n", (long long) input->st_size);
 
 	return 0;
 }
